@@ -11,4 +11,7 @@ npm install
 echo "Bundling JavaScript..."
 npm run build:js
 
+echo "Copying DartPad worker assets..."
+dart run tool/copy_worker.dart
+
 echo "Done! Generated web/bundle.js"
