@@ -1,0 +1,791 @@
+@top Program { Directive* Declaration* }
+
+@precedence {
+  label,
+  nullable,
+  member,
+  call,
+  index,
+  postfix,
+  prefix,
+  type,
+  generic,
+  constructor,
+  func,
+  param,
+  catch,
+  varDeclIdentifier,
+  class,
+  mixin,
+  enum,
+  typedef,
+  extension,
+  pattern,
+  mul @left,
+  add @left,
+  shift @left,
+  bitAnd @left,
+  bitXor @left,
+  bitOr @left,
+  rel @left,
+  typeOp @left,
+  eq @left,
+  logAnd @left,
+  logOr @left,
+  nullCoal @left,
+  cascade @left,
+  cond @right,
+  assign @right,
+  else @right
+}
+
+@external propSource dartHighlight from "./highlight"
+
+@skip { space | LineComment | BlockComment | DocComment | DocBlockComment }
+
+Directive {
+  Metadata* (
+    ImportDirective |
+    ExportDirective |
+    LibraryDirective |
+    PartDirective |
+    PartOfDirective
+  )
+}
+
+LibraryDirective {
+  builtin<"library"> ~ambig (identifier ("." identifier)*)? ";"
+}
+
+PartDirective {
+  builtin<"part"> ~ambig String ";"
+}
+
+PartOfDirective {
+  builtin<"part"> ~ambig builtin<"of"> (identifier ("." identifier)* | String) ";"
+}
+
+ImportDirective {
+  builtin<"import"> ~ambig String (builtin<"as"> identifier)? (builtin<"show"> IdentifierList)? (builtin<"hide"> IdentifierList)? ";"
+}
+
+ExportDirective {
+  builtin<"export"> ~ambig String (builtin<"show"> IdentifierList)? (builtin<"hide"> IdentifierList)? ";"
+}
+
+IdentifierList {
+  identifier ("," identifier)*
+}
+
+Metadata {
+  "@" identifier (!member "." identifier)* (!call ArgumentList)?
+}
+
+Declaration {
+  Metadata* (
+    (builtin<"external"> | builtin<"augment">)* ~ambig (
+      FunctionDeclaration |
+      VariableDeclaration |
+      ClassDeclaration |
+      MixinDeclaration |
+      ExtensionTypeDeclaration |
+      ExtensionDeclaration |
+      EnumDeclaration |
+      Typedef
+    )
+  )
+}
+
+ExtensionDeclaration {
+  builtin<"extension"> !extension (identifier)? (!generic TypeParameters)? builtin<"on"> Type ClassBody ~ambig
+}
+
+Typedef[@dynamicPrecedence=2] {
+  builtin<"typedef"> !typedef identifier (TypeParameters)? "=" Type ";" |
+  builtin<"typedef"> !typedef Type? identifier ~ambig ParameterList ";"
+}
+
+ExtensionTypeDeclaration {
+  builtin<"extension"> !extension builtin<"type"> kw<"const">? Type ("." identifier)? "(" ParameterList ")" (builtin<"implements"> TypeList)? ClassBody
+}
+
+EnumDeclaration {
+  kw<"enum"> !enum identifier (!generic TypeParameters)? (kw<"with"> TypeList)? (builtin<"implements"> TypeList)? "{" EnumBody? "}"
+}
+
+EnumBody {
+  EnumEntry ("," EnumEntry)* ","? ";" MemberDeclaration* |
+  EnumEntry ("," EnumEntry)* ","? |
+  ";" MemberDeclaration*
+}
+
+EnumEntry {
+  Metadata* identifier TypeArguments? ("." identifier)? ArgumentList?
+}
+
+ClassDeclaration {
+  classModifier* ~mod kw<"class"> !class identifier (!generic TypeParameters)? (kw<"extends"> Type)? (kw<"with"> TypeList)? (builtin<"implements"> TypeList)? ClassBody
+}
+
+classModifier {
+  (builtin<"abstract"> | builtin<"base"> | builtin<"interface"> | kw<"final"> | builtin<"sealed"> | builtin<"mixin">) ~ambig
+}
+
+MixinDeclaration {
+  mixinModifier* ~mod builtin<"mixin"> !mixin identifier (!generic TypeParameters)? (builtin<"on"> TypeList)? (builtin<"implements"> TypeList)? ClassBody
+}
+
+mixinModifier {
+  builtin<"base"> ~ambig
+}
+
+TypeList {
+  Type ("," Type)*
+}
+
+ClassBody {
+  "{" MemberDeclaration* "}"
+}
+
+MemberDeclaration {
+  Metadata* (
+    (builtin<"external"> | builtin<"static"> | builtin<"covariant"> | builtin<"augment">)* ~ambig (
+      ConstructorDeclaration |
+      FunctionDeclaration |
+      Getter |
+      Setter |
+      VariableDeclaration
+    ) |
+    ";"
+  )
+}
+
+Getter {
+  Type? builtin<"get"> ~ambig identifier (Block | "=>" expression ";")
+}
+
+Setter {
+  Type? builtin<"set"> ~ambig identifier "(" Parameter ")" (Block | "=>" expression ";")
+}
+
+FunctionDeclaration {
+  !func (
+    Type ~ambig (identifier | OperatorName) |
+    (identifier | OperatorName)
+  ) ~ambig (TypeParameters)? "(" ParameterList ")" (Async | AsyncStar | SyncStar)? (Block | "=>" expression ";" | ";") ~ambig
+}
+
+OperatorName {
+  builtin<"operator"> ~ambig (
+    "+" | "-" | "*" | "/" | "%" | "~/" |
+    "&" | "|" | "^" | "~" |
+    ShiftOp |
+    "<" | ">" | "<=" | ">=" | "==" | "[]" | "[]="
+  )
+}
+
+Type {
+  TypeNoQuestion ~ambig "?"?
+}
+
+TypeNoQuestion {
+  (TypeIdentifier (!generic TypeArguments)? |
+  RecordType |
+  FunctionType |
+  kw<"void">) ~ambig
+}
+
+FunctionType {
+  Type? builtin<"Function"> ~ambig (!generic TypeParameters)? "(" ParameterTypeList ")"
+}
+
+ParameterTypeList {
+  (
+    (ParameterType ("," ParameterType)*)? ("," OptionalParameterTypeList)? |
+    OptionalParameterTypeList
+  ) ","?
+}
+
+OptionalParameterTypeList {
+  "[" ParameterType ("," ParameterType)* ","? "]" |
+  "{" NamedParameterType ("," NamedParameterType)* ","? "}"
+}
+
+ParameterType {
+  Metadata* Type identifier?
+}
+
+NamedParameterType {
+  Metadata* builtin<"required">? Type identifier?
+}
+
+
+ConstructorDeclaration[@dynamicPrecedence=10] {
+  !constructor ((kw<"const"> | builtin<"factory">) ~ambig)? ~mod identifier ("." identifier)? ~constructor !constructor "(" ParameterList ")"
+  (
+    ":" Initializers (Block | ";") |
+    "=" Type ("." identifier)? ";" |
+    Block |
+    "=>" expression ";" |
+    ";"
+  )
+}
+
+Initializers {
+  Initializer ("," Initializer)*
+}
+
+Initializer {
+  kw<"super"> ("." identifier)? ArgumentList |
+  kw<"this"> ("." identifier)? ArgumentList |
+  identifier ("." identifier)? "=" expression
+}
+
+
+
+ParameterList {
+  (
+    (Parameter ("," Parameter)*)? ("," OptionalParameterList)? |
+    OptionalParameterList
+  ) ","?
+}
+
+OptionalParameterList {
+  "[" Parameter ("," Parameter)* ","? "]" |
+  "{" NamedParameter ("," NamedParameter)* ","? "}"
+}
+
+Parameter {
+  Metadata* (Type !param identifier | identifier | kw<"this"> "." identifier | kw<"super"> "." identifier)
+}
+
+NamedParameter {
+  Metadata* builtin<"required">? (Type !param identifier | identifier | kw<"this"> "." identifier | kw<"super"> "." identifier) ("=" expression)?
+}
+
+Block {
+  "{" (Statement | Declaration)* "}" ~ambig
+}
+
+Statement {
+  Label* (
+    Block |
+    IfStatement |
+    WhileStatement |
+    DoWhileStatement |
+    SwitchStatement |
+    ForStatement |
+    BreakStatement |
+    ContinueStatement |
+    ReturnStatement |
+    TryStatement |
+    AssertStatement |
+    RethrowStatement |
+    YieldStatement |
+    ExpressionStatement
+  )
+}
+
+AssertStatement {
+  kw<"assert"> "(" expression ("," expression)? ","? ")" ";"
+}
+
+RethrowStatement {
+  kw<"rethrow"> ";"
+}
+
+DoWhileStatement {
+  kw<"do"> Statement kw<"while"> "(" expression ")" ";"
+}
+
+BreakStatement {
+  kw<"break"> identifier? ";"
+}
+
+ContinueStatement {
+  kw<"continue"> identifier? ";"
+}
+
+SwitchStatement {
+  kw<"switch"> "(" expression ")" "{" (SwitchLabel | Statement)* "}"
+}
+
+SwitchLabel[@dynamicPrecedence=1] {
+  Label* (
+    kw<"case"> Pattern WhenClause? ":" |
+    kw<"default"> ":"
+  )
+}
+
+WhenClause {
+  builtin<"when"> expression
+}
+
+Label {
+  identifier !label ":"
+}
+
+YieldStatement {
+  (Yield | YieldStar) ~ambig expression ";"
+}
+
+TryStatement {
+  (kw<"try"> Block (OnClause | CatchClause)+ FinallyClause? |
+  kw<"try"> Block FinallyClause) ~ambig
+}
+
+OnClause {
+  !catch builtin<"on"> Type (kw<"catch"> CatchClauseBody | Block) ~ambig
+}
+
+CatchClause {
+  !catch kw<"catch"> CatchClauseBody
+}
+
+CatchClauseBody {
+  "(" identifier ("," identifier)? ")" Block
+}
+
+FinallyClause {
+  kw<"finally"> Block
+}
+
+ExpressionStatement { expression ";" }
+
+IfStatement {
+  kw<"if"> "(" expression (kw<"case"> Pattern WhenClause?)? ")" Statement (!else kw<"else"> Statement)?
+}
+
+WhileStatement {
+  kw<"while"> "(" expression ")" Statement
+}
+
+ForStatement {
+  kw<"for"> ("(" ( ( (kw<"var"> | kw<"final"> | kw<"const"> | Type)? Pattern ("=" expression)? ) | expression | "") ";" expression? ";" expression? ")")? Statement
+}
+
+ReturnStatement {
+  kw<"return"> expression? ";"
+}
+
+VariableDeclaration {
+  (
+    (kw<"var"> | kw<"final"> | kw<"const">) Type? ~ambig !varDeclIdentifier identifier ~ambig ("=" expression)? ("," identifier ("=" expression)?)* |
+    Type ~ambig !varDeclIdentifier identifier ("=" expression)? ("," identifier ("=" expression)?)* |
+    patternVarDecl
+  ) ~ambig ";"
+}
+
+patternVarDecl[@dynamicPrecedence=-10] {
+  ~ambig (kw<"var"> | kw<"final"> | kw<"const">) !pattern Pattern ("=" expression)?
+}
+
+Literal {
+  NumberLiteral |
+  BooleanLiteral |
+  NullLiteral |
+  String |
+  ListLiteral |
+  SetOrMapLiteral |
+  RecordLiteral
+}
+
+ListLiteral {
+  kw<"const">? (!generic TypeArguments)? "[" (Element ("," Element)* ","?)? "]"
+}
+
+SetOrMapLiteral {
+  kw<"const">? (!generic TypeArguments)? "{" (Element ("," Element)* ","?)? "}" ~ambig
+}
+
+Element {
+  MapEntry |
+  (SpreadElement ~ambig) |
+  IfElement |
+  ForElement |
+  (expression ~ambig)
+}
+
+MapEntry {
+  expression ":" expression
+}
+
+SpreadElement {
+  ("..." | "...?") expression
+}
+
+IfElement {
+  kw<"if"> "(" expression ")" Element (!else kw<"else"> Element)?
+}
+
+ForElement {
+  kw<"for"> "(" ( ( (kw<"var"> | kw<"final"> | kw<"const"> | Type)? Pattern ("=" expression)? ) | expression | "") ";" expression? ";" expression? ")" Element |
+  kw<"await">? kw<"for"> "(" ( (kw<"var"> | kw<"final"> | Type)? Pattern ) kw<"in"> expression ")" Element
+}
+expression {
+  ~ambig !type identifier |
+  Literal |
+  kw<"await"> expression |
+  AssignmentExpression |
+  BinaryExpression |
+  UnaryExpression |
+  TypeExpression |
+  CascadeExpression |
+  ConditionalExpression |
+  MemberExpression |
+  CallExpression |
+  IndexExpression |
+  ThrowExpression |
+  ParenthesizedExpression
+}
+
+ThrowExpression {
+  kw<"throw"> expression
+}
+
+ParenthesizedExpression { "(" expression ")" }
+
+AssignmentExpression {
+  Pattern !assign ( "=" | CompoundAssign ) expression
+}
+
+UnaryExpression {
+  !prefix ( "!" | "~" | "-" | "++" | "--" ) expression |
+  expression !postfix ( "++" | "--" | "!" )
+}
+
+BinaryExpression {
+  expression !mul ("*" | "/" | "%" | "~/") expression |
+  expression !add ("+" | "-") expression |
+  expression !shift ShiftOp expression |
+  expression !bitAnd "&" expression |
+  expression !bitXor "^" expression |
+  expression !bitOr "|" expression |
+  expression !rel ("<" | ">" | "<=" | ">=") expression |
+  expression !eq ("==" | "!=") expression |
+  expression !logAnd "&&" expression |
+  expression !logOr "||" expression |
+  expression !nullCoal "??" expression
+}
+
+TypeExpression {
+  expression !typeOp ( kw<"is"> "!"? | builtin<"as"> ) Type
+}
+
+ConditionalExpression {
+  expression !cond "?" expression ":" expression
+}
+
+CascadeExpression {
+  expression !cascade (CascadeOp CascadeSection)+
+}
+
+CascadeOp { ".." | "?.." }
+
+CascadeSection {
+  !cascade identifier ArgumentList? |
+  "[" expression "]"
+}
+
+MemberExpression {
+  expression !member ("." | "?.") identifier
+}
+
+CallExpression {
+  expression !call ~ambig ArgumentList
+}
+
+IndexExpression {
+  expression !index ("[" | QuestionBracket) expression "]"
+}
+
+ArgumentList {
+  "(" (Argument ("," Argument)* ","?)? ")"
+}
+
+Argument {
+  (identifier ":")? expression
+}
+
+
+
+TypeIdentifier[@dynamicPrecedence=-1] {
+  !type identifier
+}
+
+TypeArguments {
+  "<" Type ("," Type)* ">"
+}
+
+TypeParameters {
+  "<" TypeParameter ("," TypeParameter)* ">"
+}
+
+TypeParameter {
+  Metadata* identifier (kw<"extends"> Type)?
+}
+
+RecordType {
+  "(" (
+    RecordTypeField ("," RecordTypeField)* "," RecordTypeNamedBlock |
+    RecordTypeField ("," RecordTypeField)* ","? |
+    RecordTypeNamedBlock
+  )? ")" ~ambig
+}
+
+RecordTypeField {
+  Metadata* Type identifier?
+}
+
+RecordTypeNamedBlock {
+  "{" RecordTypeNamedField ("," RecordTypeNamedField)* ","? "}"
+}
+
+RecordTypeNamedField {
+  Metadata* Type identifier
+}
+
+
+
+RecordLiteral {
+  kw<"const">? "(" (
+    expression "," (RecordField ("," RecordField)* ","?)? |
+    NamedRecordField ("," RecordField)* ","? |
+    ""
+  ) ")"
+}
+
+RecordField {
+  NamedRecordField | expression ~ambig
+}
+
+NamedRecordField {
+  identifier ":" expression
+}
+
+String {
+  (SingleString | DoubleString | TripleSingleString | TripleDoubleString | RawString)+
+}
+
+RawString {
+  RawSingleString | RawDoubleString | RawTripleSingleString | RawTripleDoubleString
+}
+
+@local tokens {
+  SingleQuoteEnd { "'" }
+  SingleEscape { "\\" _ }
+  SingleInterpolationStart { "$" }
+  @else singleContent
+}
+
+@local tokens {
+  DoubleQuoteEnd { '"' }
+  DoubleEscape { "\\" _ }
+  DoubleInterpolationStart { "$" }
+  @else doubleContent
+}
+
+@local tokens {
+  TripleSingleQuoteEnd { "'''" }
+  TripleSingleEscape { "\\" _ }
+  TripleSingleInterpolationStart { "$" }
+  @else tripleSingleContent
+}
+
+@local tokens {
+  TripleDoubleQuoteEnd { '"""' }
+  TripleDoubleEscape { "\\" _ }
+  TripleDoubleInterpolationStart { "$" }
+  @else tripleDoubleContent
+}
+
+@local tokens {
+  RawSingleQuoteEnd { "'" }
+  @else rawSingleContent
+}
+
+@local tokens {
+  RawDoubleQuoteEnd { '"' }
+  @else rawDoubleContent
+}
+
+@local tokens {
+  RawTripleSingleQuoteEnd { "'''" }
+  @else rawTripleSingleContent
+}
+
+@local tokens {
+  RawTripleDoubleQuoteEnd { '"""' }
+  @else rawTripleDoubleContent
+}
+
+@skip {} {
+  SingleString {
+    SingleQuote (singleContent | SingleEscape | InterpolationSingle)* SingleQuoteEnd
+  }
+  DoubleString {
+    DoubleQuote (doubleContent | DoubleEscape | InterpolationDouble)* DoubleQuoteEnd
+  }
+  TripleSingleString {
+    TripleSingleQuote (tripleSingleContent | TripleSingleEscape | InterpolationTripleSingle)* TripleSingleQuoteEnd
+  }
+  TripleDoubleString {
+    TripleDoubleQuote (tripleDoubleContent | TripleDoubleEscape | InterpolationTripleDouble)* TripleDoubleQuoteEnd
+  }
+  RawSingleString {
+    RawSingleQuote rawSingleContent* RawSingleQuoteEnd
+  }
+  RawDoubleString {
+    RawDoubleQuote rawDoubleContent* RawDoubleQuoteEnd
+  }
+  RawTripleSingleString {
+    RawTripleSingleQuote rawTripleSingleContent* RawTripleSingleQuoteEnd
+  }
+  RawTripleDoubleString {
+    RawTripleDoubleQuote rawTripleDoubleContent* RawTripleDoubleQuoteEnd
+  }
+}
+
+InterpolationSingle {
+  SingleInterpolationStart (identifier | "{" expression "}")
+}
+
+InterpolationDouble {
+  DoubleInterpolationStart (identifier | "{" expression "}")
+}
+
+InterpolationTripleSingle {
+  TripleSingleInterpolationStart (identifier | "{" expression "}")
+}
+
+InterpolationTripleDouble {
+  TripleDoubleInterpolationStart (identifier | "{" expression "}")
+}
+
+BooleanLiteral { kw<"true"> | kw<"false"> }
+NullLiteral { kw<"null"> }
+
+kw<term> { @specialize[@name={term}]<Identifier, term> }
+builtin<term> { @extend[@name={term}]<Identifier, term> }
+
+Async { @extend<Identifier, "async"> }
+AsyncStar { @extend<Identifier, "async*"> }
+SyncStar { @extend<Identifier, "sync*"> }
+Yield { @extend<Identifier, "yield"> }
+YieldStar { @extend<Identifier, "yield*"> }
+
+@tokens {
+  Identifier { $[a-zA-Z_$] $[a-zA-Z0-9_$]* }
+
+
+  NumberLiteral {
+    (@digit+ ("." @digit+)? | "." @digit+) ( $[eE] $[+-]? @digit+ )? |
+    "0x" $[0-9a-fA-F]+
+  }
+
+  SingleQuote { "'" }
+  DoubleQuote { '"' }
+  TripleSingleQuote { "'''" }
+  TripleDoubleQuote { '"""' }
+  RawSingleQuote { "r'" }
+  RawDoubleQuote { 'r"' }
+  RawTripleSingleQuote { "r'''" }
+  RawTripleDoubleQuote { 'r"""' }
+
+  ShiftOp { "<<" | ">>" | ">>>" }
+  CompoundAssign { "+=" | "-=" | "*=" | "/=" | "%=" | "~/=" | "&=" | "|=" | "^=" | "<<=" | ">>=" | ">>>=" | "??=" }
+
+  @precedence {
+    RawTripleSingleQuote, RawTripleDoubleQuote, TripleSingleQuote, TripleDoubleQuote,
+    RawSingleQuote, RawDoubleQuote, SingleQuote, DoubleQuote,
+    DocComment, LineComment, DocBlockComment, BlockComment,
+    CompoundAssign, ShiftOp, NumberLiteral, ".", "/", "*", "+", "-", "%", "^", "&", "|", "~/", "~", Identifier
+  }
+
+  "+" "-" "*" "/" "%" "~/"
+  "&" "|" "^" "~"
+  "<<" ">>" ">>>"
+  "<" ">" "<=" ">=" "==" "!=" "&&" "||"
+  "?" "!" "++" "--" "??" "?."
+  QuestionBracket { "?" "[" }
+  "=>"
+
+  ";" ":" "(" ")" "{" "}" "[" "]" "," "." "=" "@"
+
+  space { $[ \t\n\r]+ }
+
+  LineComment { "//" ![\n]* }
+  DocComment { "///" ![\n]* ($[ \t\n]* "///" ![\n]*)* }
+
+  BlockComment { "/*" blockCommentRest }
+  DocBlockComment { "/**" blockCommentRest }
+  blockCommentRest { ![*] blockCommentRest | "*" blockCommentAfterStar }
+  blockCommentAfterStar { "/" | "*" blockCommentAfterStar | ![/*] blockCommentRest }
+}
+
+Pattern {
+  Pattern !logOr "||" Pattern |
+  Pattern !logAnd "&&" Pattern |
+  RelationalPattern |
+  UnaryPattern |
+  PrimaryPattern
+}
+
+RelationalPattern {
+  ("==" | "!=" | "<" | ">" | "<=" | ">=") expression
+}
+
+UnaryPattern {
+  Pattern !typeOp builtin<"as"> Type |
+  PrimaryPattern ("?" | "!") ~ambig
+}
+PrimaryPattern {
+  Literal ~ambig |
+  identifier ~ambig |
+  ParenthesizedPattern |
+  ListPattern |
+  MapPattern |
+  RecordPattern |
+  ObjectPattern
+}
+
+ParenthesizedPattern { "(" Pattern ~ambig ")" ~ambig }
+
+ListPattern {
+  (!generic TypeArguments)? "[" (PatternElement ("," PatternElement)* ","?)? "]" ~ambig
+}
+
+PatternElement { (Pattern ~ambig) | (SpreadElement ~ambig) }
+
+MapPattern {
+  (!generic TypeArguments)? "{" (MapPatternEntry ("," MapPatternEntry)* ","?)? "}" ~ambig
+}
+
+MapPatternEntry {
+  expression ":" Pattern |
+  "..."
+}
+
+RecordPattern {
+  "(" (PatternField ("," PatternField)* ","?)? ")" ~ambig
+}
+
+PatternField {
+  (identifier ~ambig ":")? Pattern ~ambig
+}
+
+ObjectPattern[@dynamicPrecedence=-2] {
+  TypeNoQuestion (!generic TypeArguments)? ~ambig ~constructor "(" (PatternField ("," PatternField)* ","?)? ")"
+}
+
+identifier {
+  (Identifier |
+  builtin<"abstract"> | builtin<"as"> | builtin<"covariant"> | builtin<"deferred"> | builtin<"dynamic"> |
+  builtin<"export"> | builtin<"extension"> | builtin<"external"> | builtin<"factory"> | builtin<"Function"> |
+  builtin<"get"> | builtin<"implements"> | builtin<"import"> | builtin<"interface"> | builtin<"late"> |
+  builtin<"library"> | builtin<"operator"> | builtin<"mixin"> | builtin<"part"> | builtin<"required"> |
+  builtin<"set"> | builtin<"static"> | builtin<"typedef"> |
+  Async | AsyncStar | SyncStar | Yield | YieldStar |
+  builtin<"base"> | builtin<"hide"> | builtin<"of"> | builtin<"on"> | builtin<"sealed"> | builtin<"show"> | builtin<"sync"> | builtin<"when"> |
+  builtin<"type"> | builtin<"augment">)
+}
